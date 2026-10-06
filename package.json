@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "vercel-build": "npm run build --workspace=@bizaffle/web",
+    "vercel-build": "node scripts/vercel-build.mjs",
     "dev": "concurrently -n api,web -c magenta,cyan \"npm run dev -w @bizaffle/api\" \"npm run dev -w @bizaffle/web\"",
     "dev:web": "npm run dev -w @bizaffle/web",
     "dev:api": "npm run dev -w @bizaffle/api",
@@ -26,6 +26,7 @@
     "typescript": "^5.8.2"
   },
   "engines": {
-    "node": ">=20"
-  }
+    "node": "20.x"
+  },
+  "packageManager": "npm@10.9.2"
 }
