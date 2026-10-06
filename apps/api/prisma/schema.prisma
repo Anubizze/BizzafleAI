@@ -1,0 +1,322 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  COMPANY_ADMIN
+  ADMIN
+}
+
+enum BusinessType {
+  IP
+  TOO
+  OTHER
+}
+
+enum TaxRegime {
+  SIMPLIFIED
+  GENERAL
+  PATENT
+  RETAIL_TAX
+  OTHER
+}
+
+enum PrimaryGoal {
+  ACCOUNTING
+  LEGAL
+  MANAGEMENT
+  ALL
+}
+
+enum AgentSlug {
+  accountant
+  lawyer
+  consultant
+  team
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+}
+
+enum DocumentCategory {
+  CONTRACT
+  INVOICE
+  ACT
+  TAX
+  HR
+  OTHER
+}
+
+enum DocumentAiStatus {
+  PENDING
+  CHECKED
+  RISKS
+  ATTENTION
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum CalendarEventType {
+  TAX
+  REPORT
+  PAYMENT
+  CONTRACT
+  TASK
+}
+
+enum NotificationType {
+  DEADLINE
+  DOCUMENT_RISK
+  TAX
+  HEALTH
+  SYSTEM
+}
+
+enum SubscriptionPlan {
+  START
+  BUSINESS
+  PRO
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model User {
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  phone                String?
+  name                 String
+  passwordHash         String
+  role                 Role      @default(USER)
+  locale               String    @default("ru")
+  avatarUrl            String?
+  onboardingCompleted  Boolean   @default(false)
+  refreshTokenHash     String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  ownedCompanies       Company[]
+  memberships          CompanyMember[]
+  conversations        AIConversation[]
+  notifications        Notification[]
+  documents            Document[]
+  auditLogs            AuditLog[]
+  subscription         Subscription?
+}
+
+model Company {
+  id            String         @id @default(uuid())
+  name          String
+  type          BusinessType
+  binIin        String
+  industry      String
+  taxRegime     TaxRegime
+  employeeCount Int            @default(1)
+  registeredAt  DateTime?
+  primaryGoal   PrimaryGoal    @default(ALL)
+  ownerId       String
+  owner         User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  members       CompanyMember[]
+  conversations AIConversation[]
+  documents     Document[]
+  metrics       BusinessMetric[]
+  events        CalendarEvent[]
+  healthChecks  BusinessHealthCheck[]
+}
+
+model CompanyMember {
+  id        String   @id @default(uuid())
+  companyId String
+  userId    String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+}
+
+model AIAgent {
+  id          String    @id @default(uuid())
+  slug        AgentSlug @unique
+  name        String
+  title       String
+  specialty   String
+  description String
+  color       String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model AIConversation {
+  id        String      @id @default(uuid())
+  title     String
+  agentSlug AgentSlug
+  companyId String
+  userId    String
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AIMessage[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model AIMessage {
+  id             String         @id @default(uuid())
+  conversationId String
+  role           MessageRole
+  content        String
+  agentSlug      AgentSlug?
+  attachments    Json?
+  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model Document {
+  id         String           @id @default(uuid())
+  name       String
+  category   DocumentCategory
+  mimeType   String
+  size       Int
+  storageKey String
+  aiStatus   DocumentAiStatus @default(PENDING)
+  companyId  String
+  userId     String
+  company    Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analyses   DocumentAnalysis[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+}
+
+model DocumentAnalysis {
+  id              String   @id @default(uuid())
+  documentId      String
+  riskLevel       RiskLevel
+  summary         String
+  risks           Json
+  obligations     Json
+  penalties       Json
+  deadlines       Json
+  payments        Json
+  recommendations Json
+  document        Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model Subscription {
+  id        String             @id @default(uuid())
+  userId    String             @unique
+  plan      SubscriptionPlan   @default(START)
+  status    SubscriptionStatus @default(TRIAL)
+  periodEnd DateTime
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments  Payment[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  subscriptionId String
+  amount         Int
+  currency       String        @default("KZT")
+  status         PaymentStatus @default(PENDING)
+  provider       String        @default("mock")
+  subscription   Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model BusinessMetric {
+  id        String   @id @default(uuid())
+  companyId String
+  month     String
+  income    Int
+  expense   Int
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, month])
+}
+
+model CalendarEvent {
+  id          String            @id @default(uuid())
+  companyId   String
+  title       String
+  type        CalendarEventType
+  date        DateTime
+  amount      Int?
+  description String?
+  company     Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model BusinessHealthCheck {
+  id              String   @id @default(uuid())
+  companyId       String
+  score           Int
+  label           String
+  strengths       Json
+  weaknesses      Json
+  risks           Json
+  recommendations Json
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  entity     String
+  entityId   String?
+  metadata   Json?
+  ip         String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+}

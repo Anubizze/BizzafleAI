@@ -1,0 +1,31 @@
+{
+  "name": "bizaffle-ai",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "vercel-build": "npm run build --workspace=@bizaffle/web",
+    "dev": "concurrently -n api,web -c magenta,cyan \"npm run dev -w @bizaffle/api\" \"npm run dev -w @bizaffle/web\"",
+    "dev:web": "npm run dev -w @bizaffle/web",
+    "dev:api": "npm run dev -w @bizaffle/api",
+    "build": "npm run build -w @bizaffle/types && npm run build -w @bizaffle/api && npm run build -w @bizaffle/web",
+    "build:web": "npm run build -w @bizaffle/web",
+    "build:api": "npm run build -w @bizaffle/api",
+    "lint": "npm run lint --workspaces --if-present",
+    "db:generate": "npm run prisma:generate -w @bizaffle/api",
+    "db:migrate": "npm run prisma:migrate -w @bizaffle/api",
+    "db:push": "npm run prisma:push -w @bizaffle/api",
+    "db:seed": "npm run prisma:seed -w @bizaffle/api",
+    "db:studio": "npm run prisma:studio -w @bizaffle/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

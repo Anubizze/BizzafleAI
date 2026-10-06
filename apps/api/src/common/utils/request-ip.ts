@@ -1,0 +1,9 @@
+import { Request } from 'express';
+
+export function getRequestIp(request: Request): string | null {
+  const forwarded = request.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    return forwarded.split(',')[0].trim();
+  }
+  return request.ip ?? request.socket.remoteAddress ?? null;
+}
